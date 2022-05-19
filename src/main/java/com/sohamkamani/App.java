@@ -27,6 +27,9 @@ import java.util.List;
 // Sample to query in a table
 public class App {
 
+    public static final String STORAGE_PROJECT_CLARO_TEST_ID = "claro-test-332211";
+    public static final String TABLE_CLARO_TEST = "`claro-test-332211.test.CPEHistoricData`";
+
     public static final String STORAGE_PROJECT_ID = "test-project-350020";
 
     public static final String DATA_SET = "Pruebas";
@@ -92,8 +95,9 @@ public class App {
 
     public static void main(String... args) throws Exception {
         // insertSampleData();
-        //loadSimpleQuery();
-        loadComplexQuery();
+        // loadSimpleQuery();
+        //loadComplexQuery();
+        loadQueryTest();
     }
 
     private static String getCriteriaFilterFromMap(Map<String, Object> criteriaMap) {
@@ -118,6 +122,47 @@ public class App {
     private static String getOrderByFromArray(String[] fields, String direction, int limit) {
         String fieldsForOrderBy = String.join(",", Arrays.asList(fields));
         return String.format("%s %s LIMIT %s", fieldsForOrderBy, direction, limit);
+    }
+
+    private static void loadQueryTest() throws Exception {
+
+        BigQuery bigquery = BigQueryOptions.newBuilder().setProjectId(STORAGE_PROJECT_CLARO_TEST_ID)
+                .build().getService();
+
+        String GET_WORD_COUNT = "SELECT * FROM " + TABLE_CLARO_TEST;
+
+        System.out.println(GET_WORD_COUNT);
+
+        Instant start = Instant.now();
+        QueryJobConfiguration queryConfig = QueryJobConfiguration.newBuilder(GET_WORD_COUNT)
+                .build();
+
+        Job queryJob = bigquery.create(JobInfo.newBuilder(queryConfig).build());
+        queryJob = queryJob.waitFor();
+        // the waitFor method blocks until the job completes
+        // and returns `null` if the job doesn't exist anymore
+        if (queryJob == null) {
+            throw new Exception("job no longer exists");
+        }
+        // once the job is done, check if any error occured
+        if (queryJob.getStatus().getError() != null) {
+            throw new Exception(queryJob.getStatus().getError().toString());
+        }
+
+        System.out.println(String.format("%s\t%s\t\t%s", "id", "value", "cpe"));
+        System.out.println("------------------------------------------------------------------------------------");
+        TableResult result = queryJob.getQueryResults();
+        for (FieldValueList row : result.iterateAll()) {
+            // We can use the `get` method along with the column
+            // name to get the corresponding row entry
+            String id = row.get("id").getStringValue();
+            String value = row.get("value").getStringValue();
+            Long cpe = row.get("cpe").getLongValue();
+
+            System.out.printf("%s\t%s\t%s\n", id, value, cpe);
+        }
+        Instant end = Instant.now();
+        System.out.println(String.format("TIME EXECUTED FOR QUERY: %d", Duration.between(start, end).getSeconds()));
     }
 
     private static void loadSimpleQuery() throws Exception {
@@ -219,7 +264,7 @@ public class App {
             System.out.printf("%s\t%s\t%s\n", firstColumn, secondColumn, dateValue);
         }
         Instant end = Instant.now();
-        System.out.println(String.format("TIME EXECUTED FOR QUERY: %d", Duration.between(start, end).getSeconds()) );
+        System.out.println(String.format("TIME EXECUTED FOR QUERY: %d", Duration.between(start, end).getSeconds()));
 
     }
 
