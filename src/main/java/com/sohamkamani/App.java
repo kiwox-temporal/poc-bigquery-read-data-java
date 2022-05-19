@@ -4,6 +4,7 @@ import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.BigQueryError;
 import com.google.cloud.bigquery.BigQueryOptions;
 import com.google.cloud.bigquery.DmlStats;
+import com.google.cloud.bigquery.FieldValue;
 import com.google.cloud.bigquery.FieldValueList;
 import com.google.cloud.bigquery.InsertAllRequest;
 import com.google.cloud.bigquery.InsertAllResponse;
@@ -27,8 +28,8 @@ import java.util.List;
 // Sample to query in a table
 public class App {
 
-    public static final String STORAGE_PROJECT_CLARO_TEST_ID = "claro-test-332211";
-    public static final String TABLE_CLARO_TEST = "`claro-test-332211.test.CPEHistoricData`";
+    public static final String STORAGE_PROJECT_CLARO_TEST_ID = "test-project-350020";
+    public static final String TABLE_BIGQUERY_DATA_TEST = "`bigquery-public-data.austin_bikeshare.bikeshare_trips`";
 
     public static final String STORAGE_PROJECT_ID = "test-project-350020";
 
@@ -96,8 +97,8 @@ public class App {
     public static void main(String... args) throws Exception {
         // insertSampleData();
         // loadSimpleQuery();
-        //loadComplexQuery();
-        loadQueryTest();
+        loadComplexQuery();
+        // loadQueryTest();
     }
 
     private static String getCriteriaFilterFromMap(Map<String, Object> criteriaMap) {
@@ -126,10 +127,10 @@ public class App {
 
     private static void loadQueryTest() throws Exception {
 
-        BigQuery bigquery = BigQueryOptions.newBuilder().setProjectId(STORAGE_PROJECT_CLARO_TEST_ID)
+        BigQuery bigquery = BigQueryOptions.newBuilder().setProjectId(STORAGE_PROJECT_ID)
                 .build().getService();
 
-        String GET_WORD_COUNT = "SELECT * FROM " + TABLE_CLARO_TEST;
+        String GET_WORD_COUNT = "SELECT * FROM " + TABLE_BIGQUERY_DATA_TEST;
 
         System.out.println(GET_WORD_COUNT);
 
@@ -149,17 +150,23 @@ public class App {
             throw new Exception(queryJob.getStatus().getError().toString());
         }
 
-        System.out.println(String.format("%s\t%s\t\t%s", "id", "value", "cpe"));
+        System.out.println(String.format("%s\t%s\t\t%s", "trip_id", "subscriber_type", "bikeid"));
         System.out.println("------------------------------------------------------------------------------------");
         TableResult result = queryJob.getQueryResults();
         for (FieldValueList row : result.iterateAll()) {
             // We can use the `get` method along with the column
             // name to get the corresponding row entry
-            String id = row.get("id").getStringValue();
-            String value = row.get("value").getStringValue();
-            Long cpe = row.get("cpe").getLongValue();
-
-            System.out.printf("%s\t%s\t%s\n", id, value, cpe);
+            Long trip_id = row.get("trip_id").getLongValue();
+            String subscriber_type = null, bikeid = null;
+            FieldValue fieldSubscriberType = row.get("subscriber_type");
+            if (!fieldSubscriberType.isNull()) {
+                subscriber_type = fieldSubscriberType.getStringValue();
+            }
+            FieldValue fieldBikeId = row.get("bikeid");
+            if (!fieldBikeId.isNull()) {
+                bikeid = fieldBikeId.getStringValue();
+            }
+            System.out.printf("%s\t%s\t%s\n", trip_id, subscriber_type, bikeid);
         }
         Instant end = Instant.now();
         System.out.println(String.format("TIME EXECUTED FOR QUERY: %d", Duration.between(start, end).getSeconds()));
