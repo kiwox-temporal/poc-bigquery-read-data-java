@@ -14,6 +14,12 @@ import com.google.cloud.bigquery.QueryJobConfiguration;
 import com.google.cloud.bigquery.JobStatistics;
 import com.google.cloud.bigquery.TableResult;
 
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -22,6 +28,7 @@ import java.util.Date;
 import java.util.Dictionary;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.List;
 
@@ -97,8 +104,9 @@ public class App {
     public static void main(String... args) throws Exception {
         // insertSampleData();
         // loadSimpleQuery();
-        loadComplexQuery();
-        // loadQueryTest();
+        // loadComplexQuery();
+        loadQueryTest();
+
     }
 
     private static String getCriteriaFilterFromMap(Map<String, Object> criteriaMap) {
@@ -126,6 +134,8 @@ public class App {
     }
 
     private static void loadQueryTest() throws Exception {
+
+        LinkedList<String> dataList = new LinkedList<String>();
 
         BigQuery bigquery = BigQueryOptions.newBuilder().setProjectId(STORAGE_PROJECT_ID)
                 .build().getService();
@@ -166,8 +176,10 @@ public class App {
             if (!fieldBikeId.isNull()) {
                 bikeid = fieldBikeId.getStringValue();
             }
-            System.out.printf("%s\t%s\t%s\n", trip_id, subscriber_type, bikeid);
+            dataList.add(String.format("%s\t%s\t%s\n", trip_id, subscriber_type, bikeid));
+            // System.out.printf("%s\t%s\t%s\n", trip_id, subscriber_type, bikeid");
         }
+        writeSimpleFile(dataList);
         Instant end = Instant.now();
         System.out.println(String.format("TIME EXECUTED FOR QUERY: %d", Duration.between(start, end).getSeconds()));
     }
@@ -302,4 +314,20 @@ public class App {
         Long rowsInserted = stats.getDmlStats().getInsertedRowCount();
         System.out.printf("%d rows inserted\n", rowsInserted);
     }
+
+    private static void writeSimpleFile(LinkedList<String> dataList) throws FileNotFoundException, IOException {
+        Path fileName = Path.of("result-simple-query.txt");
+        String content = String.join("\n", dataList);
+        try (RandomAccessFile stream = new RandomAccessFile(fileName.toFile(), "rw");
+                FileChannel channel = stream.getChannel();) {
+
+            byte[] strBytes = content.getBytes();
+            ByteBuffer buffer = ByteBuffer.allocate(strBytes.length);
+
+            buffer.put(strBytes);
+            buffer.flip();
+            channel.write(buffer);
+        }
+    }
+
 }
